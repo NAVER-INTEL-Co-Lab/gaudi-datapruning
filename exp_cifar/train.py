@@ -1,15 +1,18 @@
 import os, sys, shutil, time, random
 import argparse
 import torch
-import torch.backends.cudnn as cudnn
 from utils import AverageMeter, RecorderMeter, time_string, convert_secs2time
 from models import resnet
 import numpy as np
 from data import load_data
+import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.hpu.random as htrandom
 
 ########################################################################################################################
 #  Training Baseline
 ########################################################################################################################
+def is_lazy():
+    return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
 
 parser = argparse.ArgumentParser(description='Trains ResNet on CIFAR',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -30,22 +33,17 @@ parser.add_argument('--save_path', type=str, default='./save', help='Folder to s
 parser.add_argument('--evaluate', dest='evaluate', action='store_true',default= False, help='evaluate model on validation set')
 parser.add_argument('--dynamics', default=True, action='store_true', help='save training dynamics')
 # Acceleration
-parser.add_argument('--gpu', type=str, default=0)
 parser.add_argument('--workers', type=int, default=2, help='number of data loading workers (default: 2)')
 # random seed
 parser.add_argument('--manualSeed', type=int, default='42', help='manual seed')
 
 args = parser.parse_args()
-args.use_cuda = True
-args.device = f'cuda:{args.gpu}'
+args.device = 'hpu'
 
 if args.manualSeed is None:
     args.manualSeed = random.randint(1, 10000)
 random.seed(args.manualSeed)
 torch.manual_seed(args.manualSeed)
-if args.use_cuda:
-    torch.cuda.manual_seed_all(args.manualSeed)
-cudnn.benchmark = True
 
 def main():
     # Init logger
@@ -61,7 +59,6 @@ def main():
     print_log("Random Seed: {}".format(args.manualSeed), log)
     print_log("python version : {}".format(sys.version.replace('\n', ' ')), log)
     print_log("torch  version : {}".format(torch.__version__), log)
-    print_log("cudnn  version : {}".format(torch.backends.cudnn.version()), log)
     print_log("Dataset: {}".format(args.dataset), log)
     print_log("Data Path: {}".format(args.data_path), log)
     print_log("Network: {}".format(args.arch), log)
@@ -95,6 +92,9 @@ def main():
     
     print_log("=> network :\n {}".format(net), log)
     net = net.to(args.device)
+    if not is_lazy():
+        # os.environ['PT_HPU_FORCE_STATIC_COMPILE'] = "1"
+        net = torch.compile(net, backend="hpu_backend")
 
     # define loss function (criterion) and optimizer
     criterion = torch.nn.CrossEntropyLoss().to(args.device)
@@ -196,7 +196,6 @@ def train(train_loader, args, model, criterion, optimizer, scheduler, epoch, log
         loss = criterion(output, target_var)
         
         # record training dynamics
-        # import pdb; pdb.set_trace()
         loss_batch = torch.nn.functional.cross_entropy(output, target_var, reduce=False).detach().cpu()
         index_batch = index
         if t==0:
@@ -219,8 +218,9 @@ def train(train_loader, args, model, criterion, optimizer, scheduler, epoch, log
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-
+        htcore.mark_step()
         optimizer.step()
+        htcore.mark_step()
         scheduler.step()
 
         # measure elapsed time
@@ -286,7 +286,7 @@ def save_checkpoint(state, is_best, save_path, filename):
 
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1,)):    
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)

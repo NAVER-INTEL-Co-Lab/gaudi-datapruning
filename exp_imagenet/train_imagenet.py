@@ -26,6 +26,8 @@ import torch
 from scipy.stats import beta
 import numpy as np
 
+def is_lazy():
+    return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
 
 def beta_sampling(prune_rate, c_d, target_probs, score, mask):
     data_length = target_probs.shape[-1]
@@ -51,7 +53,7 @@ parser = argparse.ArgumentParser(description='PyTorch IMageNet Training')
 ######################### Training Setting #########################
 parser.add_argument('--epochs', type=int, metavar='N',
                     help='The number of epochs to train a model.')
-parser.add_argument('--iterations', type=int, default=300000, metavar='N',
+parser.add_argument('--iterations', type=int, default=None, metavar='N',
                     help='The number of iteration to train a model; conflict with --epoch.')
 parser.add_argument('--batch-size', type=int, default=256, metavar='N',
                     help='input batch size for training (default: 256)')
@@ -66,7 +68,7 @@ parser.add_argument('--iterations-per-testing', type=int, default=800, metavar='
                     help='The number of iterations for testing model')
 
 ######################### Path Setting #########################
-parser.add_argument('--data-dir', type=str, default='/storage/dataset/imagenet',
+parser.add_argument('--data-dir', type=str, default='/opt/project/coreset/imagenet',
                     help='The dir path of the data.')
 parser.add_argument('--base-dir', type=str, default='./data-model/imagenet/',
                     help='The base dir of this project.')
@@ -98,11 +100,6 @@ parser.add_argument('--reversed-ratio', type=float,
                     help="Ratio for the coreset, not the whole dataset.")
 
 parser.add_argument('--strata', type=int, default=50)
-
-######################### GPU Setting #########################
-parser.add_argument('--gpuid', type=str, default='4,5',
-                    help='The ID of GPU.')
-parser.add_argument('--local_rank', type=str)
 
 ### for DUAL
 parser.add_argument('--d_c', type=float, help='d_c for dual + beta', default=11)
@@ -136,11 +133,7 @@ print_training_info(args, all=True)
 print(f'Last ckpt path: {last_ckpt_path}')
 print(f'Training log path: {td_dir}')
 
-GPUID = args.gpuid
-print(GPUID)
-os.environ["CUDA_VISIBLE_DEVICES"] = str(GPUID)
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('hpu')
 print(device)
 
 data_dir = args.data_dir
@@ -219,10 +212,9 @@ if args.network == 'resnet50':
     print('Using resnet50.')
     model = torchvision.models.resnet50(pretrained=False, progress=True)
 
-model=torch.nn.parallel.DataParallel(model).to(device)
-# import pdb; pdb.set_trace()
 model = model.to(device)
-# model=model.cuda()
+if not is_lazy():
+    model = torch.compile(model, backend="hpu_backend")
 
 if args.iterations is None:
     num_of_iterations = iterations_per_epoch * args.epochs

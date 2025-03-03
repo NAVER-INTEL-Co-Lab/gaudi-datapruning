@@ -5,6 +5,8 @@ from ..utils import accuracy
 import wandb
 import numpy as np
 # import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.hpu.random as htrandom
 
 class Trainer(object):
     """
@@ -31,13 +33,11 @@ class Trainer(object):
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
-            # s = score[np.isin(mask, idx)]
-            # loss *= s.mean()
-            
+
             loss.backward()
-            # htcore.mark_step()
+            htcore.mark_step()
             optimizer.step()
-            # htcore.mark_step()
+            htcore.mark_step()
             if scheduler:
                 scheduler.step()
 

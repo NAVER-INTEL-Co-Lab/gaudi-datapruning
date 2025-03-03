@@ -2,7 +2,6 @@ import os, sys, shutil, time, random
 import glob
 import argparse
 import torch
-import torch.backends.cudnn as cudnn
 from utils import AverageMeter, RecorderMeter, time_string, convert_secs2time
 from models import resnet
 import numpy as np
@@ -10,10 +9,14 @@ import math
 import wandb
 from data_subset import load_cifar100_sub, load_cifar10_sub
 # from cosine_annealing_warmup import CosineAnnealingWarmupRestarts
+import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.hpu.random as htrandom
 
 ########################################################################################################################
 #  Training Subset
 ########################################################################################################################
+def is_lazy():
+    return os.getenv("PT_HPU_LAZY_MODE", "1") != "0"
 
 parser = argparse.ArgumentParser(description='Trains ResNet on CIFAR',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -30,7 +33,7 @@ parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
 parser.add_argument('--decay', type=float, default=0.0005, help='Weight decay (L2 penalty).')
 parser.add_argument('--print_freq', default=200, type=int, metavar='N', help='print frequency (default: 200)')
 parser.add_argument('--save_path', type=str, default='./ckpt', help='Folder to save checkpoints and log.')
-parser.add_argument('--save', type=bool, default=False)
+parser.add_argument('--save', action='store_true', default=False)
 parser.add_argument('--evaluate', dest='evaluate', action='store_true',default= False, help='evaluate model on validation set')
 
 # Pruning
@@ -47,7 +50,6 @@ parser.add_argument('--graph-sampling-mode', default='weighted')
 parser.add_argument('--mis-ratio', default=0.2, type=float)
 
 # Acceleration
-parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--workers', type=int, default=4, help='number of data loading workers (default: 2)')
 
 # random seed
@@ -67,21 +69,18 @@ parser.add_argument('--sample', type=str, default=None, help='sampling method: r
 parser.add_argument('--method', type=str, default=None, help='methodology name')
 
 args = parser.parse_args()
-args.use_cuda = True
-args.device = f'cuda:{args.gpu}'
+args.device = 'hpu'
+
 if args.manualSeed is None:
     args.manualSeed = random.randint(1, 10000)
 random.seed(args.manualSeed)
 torch.manual_seed(args.manualSeed)
-if args.use_cuda:
-    torch.cuda.manual_seed_all(args.manualSeed)
-cudnn.benchmark = True
 
 wandb.init(project=f"{args.arch}_{args.dataset}_{args.arch}", 
            name = f"{args.method}_{args.sample}_{args.subset_rate}_bsz{args.batch_size}",
            config=args)
 
-def main(): # 
+def main(): 
     # Init logger
     print(args.save_path)
     if not os.path.isdir(args.save_path):
@@ -94,7 +93,6 @@ def main(): #
     print_log("Random Seed: {}".format(args.manualSeed), log)
     print_log("python version : {}".format(sys.version.replace('\n', ' ')), log)
     print_log("torch  version : {}".format(torch.__version__), log)
-    print_log("cudnn  version : {}".format(torch.backends.cudnn.version()), log)
     print_log("Dataset: {}".format(args.dataset), log)
     print_log("Data Path: {}".format(args.data_path), log)
     print_log("Network: {}".format(args.arch), log)
@@ -106,18 +104,18 @@ def main(): #
     target_probs = np.load(args.target_probs_path)[:1]
     score = np.load(args.score_path)
     mask = np.load(args.mask_path)
-    
+    print(score, mask)
     if args.dataset == 'cifar10':
         args.num_classes = 10
         args.num_samples = 50000 * args.subset_rate
         args.num_iter = math.ceil(args.num_samples/args.batch_size)
-        train_loader, test_loader = load_cifar10_sub(args, mask, score, target_probs)
+        train_loader, test_loader = load_cifar10_sub(args, target_probs, score, mask)
         
     elif args.dataset == 'cifar100':
         args.num_classes = 100
         args.num_samples = 50000 * args.subset_rate
         args.num_iter = math.ceil(args.num_samples/args.batch_size)
-        train_loader, test_loader = load_cifar100_sub(args, mask, score, target_probs)
+        train_loader, test_loader = load_cifar100_sub(args, target_probs, score, mask)
     else:
         raise NotImplementedError("Unsupported dataset type")
     
@@ -130,6 +128,9 @@ def main(): #
         net = vgg.VGG('VGG16', num_class=args.num_classes)
     
     net = net.to(args.device)
+    if not is_lazy():
+        net = torch.compile(net, backend="hpu_backend")
+
     print_log("=> network :\n {}".format(net), log)
 
     # define loss function (criterion) and optimizer
@@ -166,8 +167,6 @@ def main(): #
                                                                100 - recorder.max_accuracy(False)), log)
 
         # train for one epoch
-        ###
-        # print(len(train_loader))
         train_acc, train_los = train(train_loader, args, net, criterion, optimizer, scheduler, epoch, log)
 
         # evaluate on validation set
@@ -214,29 +213,27 @@ def train(train_loader, args, model, criterion, optimizer, scheduler, epoch, log
     end = time.time()
     
     for t, (input, target) in enumerate(train_loader):
-        if args.use_cuda:
-            y = target[0].to(args.device)
-            x = input.to(args.device)
-            s = target[1].to(args.device)
+        target = target.to(args.device)
+        input = input.to(args.device)
         
-        input_var = torch.autograd.Variable(x)
-        target_var = torch.autograd.Variable(y)
         # compute output
-        output = model(input_var)
-        n = len(y)
-        loss = criterion(output, target_var)
+        output = model(input)
+        loss = criterion(output, target)
         
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, y, topk=(1, 5))
-        losses.update(loss.item(), len(y))
-        top1.update(prec1.item(), len(y))
-        top5.update(prec5.item(), len(y))
+        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        losses.update(loss.item(), len(target))
+        top1.update(prec1.item(), len(target))
+        top5.update(prec5.item(), len(target))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
+        htcore.mark_step()
 
         optimizer.step()
+        htcore.mark_step()
+
         scheduler.step()
 
         # measure elapsed time
@@ -267,9 +264,8 @@ def validate(test_loader, args, model, criterion, log):
     model.eval()
     with torch.no_grad():
         for i, (input, target) in enumerate(test_loader):
-            if args.use_cuda:
-                y = target.to(args.device)
-                x = input.to(args.device)
+            y = target.to(args.device)
+            x = input.to(args.device)
 
             # compute output
             output = model(x)

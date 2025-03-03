@@ -18,14 +18,12 @@ parser = argparse.ArgumentParser(description='Calculate sample-wise importance',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--dynamics_path', type=str, default='./save/cifar10/42/npy/',
                     help='Folder to save dynamics.')
-parser.add_argument('--mask_path', type=str, default='./generated_mask',
-                    help='Folder to save mask.')
 parser.add_argument('--trajectory_len', default=200, type=int,
                     help='Length of the trajectory.')
 parser.add_argument('--window_size', default=10, type=int,
                     help='Size of the sliding window.')
 parser.add_argument('--save_path', default='./generated', type=str,
-                    help='Size of the sliding window.')
+                    help='Folder to save mask.')
 
 parser.add_argument('--seed', default=42, type=int, help='manual seed')
 parser.add_argument('--dataset', default='cifar10', type=str, help='dataset (cifar10 / cifar100)')
