@@ -8,11 +8,11 @@ For more details, check out our paper on [Arxiv](https://arxiv.org/abs/2502.0690
 ## 🚀 Usage  
 
 Please refer to each folder for dataset-specific experiments:  
-- **`exp_cifar`** for CIFAR experiments  
+- **`exp_cifar`** for CIFAR (10, 100) experiments  
 - **`exp_imagenet`** for ImageNet experiments  
 
 ---
-## 📄 Results
+## 📊 Results
 ![DUAL Performance](./main_plot.png)
 
 - **Left**: Test accuracy comparison on CIFAR-10 dataset under different pruning ratios.
