@@ -36,7 +36,7 @@ maintaining SOTA performance.
 - **DUAL** (**ours**)  [https://arxiv.org/abs/2502.06905](https://arxiv.org/abs/2502.06905)
 
 ---
-## ⌛️ Gaudi Performance Comparison vs. NVIDIA A6000
+## ⌛️ Gaudi Performance Comparison (vs. NVIDIA A6000)
 
 |  | NVIDIA A6000 | intel Gaudi-v2 (Lazy) |
 |---|---|---|
