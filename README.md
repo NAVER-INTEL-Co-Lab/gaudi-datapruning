@@ -14,6 +14,7 @@ Please refer to each folder for dataset-specific experiments:
 ---
 ## 📊 Results
 **DUAL** pruning enables efficient dataset pruning without requiring full training on the original dataset while achieving SOTA performance.
+
 ![DUAL Performance](./main_plot.png)
 
 - **Left**: Test accuracy comparison on CIFAR-10 dataset under different pruning ratios.
