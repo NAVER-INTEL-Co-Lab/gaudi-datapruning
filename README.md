@@ -21,8 +21,8 @@ Please refer to each folder for dataset-specific experiments:
 - **Right**: Test accuracy comparison on CIFAR-100 dataset under different pruning ratios.
 - The color represents the total computation time, including the time spent training the original
 dataset for score calculation for each pruning method. Blue indicates lower computation time, while red
-indicates higher computation time. Our method demonstrates its ability to minimize computation time while
-maintaining SOTA performance.
+indicates higher computation time. *Our method demonstrates its ability to minimize computation time while
+maintaining SOTA performance*.
 ---
 
 ## 📌 Available Data Pruning Algorithms  
