@@ -1,8 +1,7 @@
 # ✂️ Data Pruning Algorithms for Gaudi Environment  
 
-This repository provides an implementation of **Difficulty and Uncertainty-Aware Lightweight (DUAL)** data pruning. DUAL enables efficient dataset pruning without requiring full training on the original dataset, making it particularly suitable for the **Gaudi environment**.  
-
-
+This repository implements **Difficulty and Uncertainty-Aware Lightweight (DUAL)** data pruning. DUAL enables efficient dataset pruning without requiring full training on the original dataset, making it particularly suitable for the **Gaudi environment**.  
+![DUAL Performance](./main.png)
 
 ---
 ## 📄 Paper
