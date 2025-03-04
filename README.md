@@ -5,7 +5,7 @@ This repository provides an implementation of **Difficulty and Uncertainty-Aware
 ---
 ## 📄 Paper
 
-For more details, check out our paper: 
+For more details, check out our paper on Arxiv: 
 
 [Lightweight Dataset Pruning without Full Training via
 Example Difficulty and Prediction Uncertainty](https://arxiv.org/abs/2502.06905)
@@ -19,7 +19,7 @@ Example Difficulty and Prediction Uncertainty](https://arxiv.org/abs/2502.06905)
 - **Entropy**  [https://arxiv.org/abs/1906.11829](https://arxiv.org/abs/1906.11829)
 - **Dyn-Unc**  [https://arxiv.org/abs/2306.05175](https://arxiv.org/abs/2306.05175)
 - **TDDS**  [https://arxiv.org/abs/2311.13613](https://arxiv.org/abs/2311.13613)
-- **DUAL** (ours)  
+- **DUAL** (**ours**)  
 
 ---
 ## 🚀 Usage  
