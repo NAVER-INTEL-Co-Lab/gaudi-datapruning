@@ -38,10 +38,10 @@ maintaining SOTA performance.
 ---
 ## ⌛️ Gaudi-v2 Performance Comparison (vs. NVIDIA A6000)
 
-| ⌛️ | NVIDIA A6000 | intel Gaudi-v2 (Lazy) |
+|  | NVIDIA A6000 | intel Gaudi-v2 (Lazy) |
 |---|---|---|
-| CIFAR Full | 37m 14s | 32m 14s |
-| ImageNet Full | 35h 20m 38s | 19h 54m 1s |
+| CIFAR (Full) | 37m 14s | 32m 14s |
+| ImageNet (Full) | 35h 20m 38s | 19h 54m 1s |
 
 ---
 ## 📚 Citation
