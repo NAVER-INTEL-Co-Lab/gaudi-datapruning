@@ -2,6 +2,9 @@
 
 This repository provides an implementation of **Difficulty and Uncertainty-Aware Lightweight (DUAL)** data pruning. DUAL enables efficient dataset pruning without requiring full training on the original dataset, making it particularly suitable for the **Gaudi environment**.  
 
+[main_plot_random_dash.pdf](https://github.com/user-attachments/files/19065820/main_plot_random_dash.pdf)
+
+
 ---
 ## 📄 Paper
 
