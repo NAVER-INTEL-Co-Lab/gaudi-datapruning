@@ -42,7 +42,6 @@ maintaining SOTA performance.
 |---|---|---|
 | CIFAR Full | 37m 14s | 32m 14s |
 | ImageNet Full | 35h 20m 38s | 19h 54m 1s |
-|---|---|---|
 
 ---
 ## 📚 Citation
