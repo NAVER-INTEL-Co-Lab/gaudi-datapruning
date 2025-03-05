@@ -2,7 +2,7 @@
 
 This repository provides an implementation of **Difficulty and Uncertainty-Aware Lightweight (DUAL)** data pruning, along with other data pruning algorithms particularly suitable for the **Gaudi environment**.
 
-For more details, check out our paper on [Arxiv](https://arxiv.org/abs/2502.06905)
+For more details, check out our paper on [arXiv](https://arxiv.org/abs/2502.06905)
 
 ---
 ## 🚀 Usage  
